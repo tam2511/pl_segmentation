@@ -39,8 +39,10 @@ class CocoDataset(Dataset):
         mask[1:, :, :] = mask[1:, :, :] > 0
         mask[0, :, :] = mask[1:, :, :].sum(0) == 0
         if self.transform:
+            mask = mask.transpose(1, 2, 0)
             result = self.transform(image=image, mask=mask)
             image, mask = result['image'], result['mask']
+            mask = mask.permute(2, 0, 1)
         return image, mask
 
     def __len__(self) -> int:
