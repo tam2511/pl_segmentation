@@ -1,6 +1,6 @@
 from typing import Optional, Callable
 import os
-import sys
+import contextlib
 import numpy as np
 import cv2
 from torch.utils.data import Dataset
@@ -14,10 +14,10 @@ class CocoDataset(Dataset):
         self.annos_path = annos_path
         self.images_path = images_path
         self.transform = transform
-        sys.stdout = open(os.devnull, 'w')
-        self.coco = COCO(annos_path)
-        sys.stdout = sys.__stdout__
+        with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
+            self.coco = COCO(annos_path)
         self.ids = list(sorted(self.coco.imgs.keys()))
+        self.num_classes = 1 + len(self.coco.getCatIds())
 
     def _load_image(self, id):
         path = self.coco.loadImgs(id)[0]["file_name"]
@@ -32,9 +32,12 @@ class CocoDataset(Dataset):
         id = self.ids[idx]
         image = self._load_image(id)
         annos = self._load_target(id)
-        mask = np.zeros(image.shape[:2])
+        mask = np.zeros((self.num_classes, image.shape[0], image.shape[1]))
         for anno in annos:
-            mask += self.coco.annToMask(anno)
+            class_id = anno['category_id']
+            mask[class_id, :, :] += (self.coco.annToMask(anno) > 0)
+        mask[1:, :, :] = mask[1:, :, :] > 0
+        mask[0, :, :] = mask[1:, :, :].sum(0) == 0
         if self.transform:
             result = self.transform(image=image, mask=mask)
             image, mask = result['image'], result['mask']
