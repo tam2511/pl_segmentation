@@ -32,7 +32,7 @@ class CocoDataset(Dataset):
         id = self.ids[idx]
         image = self._load_image(id)
         annos = self._load_target(id)
-        mask = np.zeros(image.shape)
+        mask = np.zeros(image.shape[:2])
         for anno in annos:
             mask += self.coco.annToMask(anno)
         if self.transform:
