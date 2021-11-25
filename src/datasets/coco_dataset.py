@@ -32,18 +32,56 @@ class CocoDataset(Dataset):
         id = self.ids[idx]
         image = self._load_image(id)
         annos = self._load_target(id)
-        mask = np.zeros((self.num_classes, image.shape[0], image.shape[1]), dtype=np.int32)
+        mask = np.zeros((self.num_classes, image.shape[0], image.shape[1]), dtype=np.uint8)
         for anno in annos:
             class_id = anno['category_id']
-            mask[class_id, :, :] += (self.coco.annToMask(anno) > 0)
-        mask[1:, :, :] = mask[1:, :, :] > 0
-        mask[0, :, :] = mask[1:, :, :].sum(0) == 0
+            mask[class_id, :, :] = self.__annotation2binarymask(mask[class_id], anno)
         if self.transform:
             mask = mask.transpose(1, 2, 0)
             result = self.transform(image=image, mask=mask)
             image, mask = result['image'], result['mask']
             mask = mask.permute(2, 0, 1)
+        mask[0, :, :] = (mask[1:, :, :].sum(0) == 0)
         return image, mask
 
     def __len__(self) -> int:
         return len(self.ids)
+
+    def __decodeSeg(self, mask, segmentations):
+        """
+        Draw segmentation
+        """
+        pts = [
+            np
+                .array(anno)
+                .reshape(-1, 2)
+                .round()
+                .astype(int)
+            for anno in segmentations
+        ]
+        mask = cv2.fillPoly(mask, pts, 1)
+
+        return mask
+
+    def __decodeRl(self, mask, rle):
+        """
+        Run-length encoded object decode
+        """
+        mask = mask.reshape(-1, order='F')
+
+        last = 0
+        val = True
+        for count in rle['counts']:
+            val = not val
+            mask[last:(last + count)] |= val
+            last += count
+
+        mask = mask.reshape(rle['size'], order='F')
+        return mask
+
+    def __annotation2binarymask(self, mask, annotation):
+        segmentations = annotation['segmentation']
+        if isinstance(segmentations, list):  # segmentation
+            return self.__decodeSeg(mask, segmentations)
+        else:  # run-length
+            return self.__decodeRl(mask, segmentations)
