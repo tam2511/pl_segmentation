@@ -1,5 +1,6 @@
 from typing import Optional, Callable
 import os
+import sys
 import numpy as np
 from torch.utils.data import Dataset
 from pycocotools.coco import COCO
@@ -12,7 +13,9 @@ class CocoDataset(Dataset):
         self.annos_path = annos_path
         self.images_path = images_path
         self.transform = transform
+        sys.stdout = open(os.devnull, 'w')
         self.coco = COCO(annos_path)
+        sys.stdout = sys.__stdout__
         self.ids = list(sorted(self.coco.imgs.keys()))
 
     def _load_image(self, id):
