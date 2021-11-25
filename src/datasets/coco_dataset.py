@@ -2,6 +2,7 @@ from typing import Optional, Callable
 import os
 import sys
 import numpy as np
+import cv2
 from torch.utils.data import Dataset
 from pycocotools.coco import COCO
 
@@ -20,7 +21,9 @@ class CocoDataset(Dataset):
 
     def _load_image(self, id):
         path = self.coco.loadImgs(id)[0]["file_name"]
-        return read_image(os.path.join(self.images_path, path)).convert("RGB")
+        image = read_image(os.path.join(self.images_path, path))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        return image
 
     def _load_target(self, id):
         return self.coco.loadAnns(self.coco.getAnnIds(id))
