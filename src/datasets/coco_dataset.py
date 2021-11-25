@@ -32,7 +32,7 @@ class CocoDataset(Dataset):
         id = self.ids[idx]
         image = self._load_image(id)
         annos = self._load_target(id)
-        mask = np.zeros((self.num_classes, image.shape[0], image.shape[1]))
+        mask = np.zeros((self.num_classes, image.shape[0], image.shape[1]), dtype=np.int32)
         for anno in annos:
             class_id = anno['category_id']
             mask[class_id, :, :] += (self.coco.annToMask(anno) > 0)
