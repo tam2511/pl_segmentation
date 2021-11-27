@@ -3,6 +3,7 @@ import os
 import contextlib
 import numpy as np
 import cv2
+import torch
 from torch.utils.data import Dataset
 from pycocotools.coco import COCO
 
@@ -40,7 +41,7 @@ class CocoDataset(Dataset):
             mask = mask.transpose(1, 2, 0)
             result = self.transform(image=image, mask=mask)
             image, mask = result['image'], result['mask']
-            mask = mask.permute(2, 0, 1)
+            mask = mask.permute(2, 0, 1) if isinstance(mask, torch.Tensor) else mask.transpose(2, 0, 1)
         mask[0, :, :] = (mask[1:, :, :].sum(0) == 0)
         return image, mask
 
